@@ -39,6 +39,8 @@ const server = createServer(async (req, res) => {
       ok: config.missing.length === 0,
       service: 'aigames-ai-gateway',
       model: config.model,
+      runtimeContract: 'command_dsl_v2',
+      supportsCustomCommandGames: true,
       configuredKeys: config.keys.filter(Boolean).length,
       requiredKeys: 5,
       activeBuilds,
@@ -60,12 +62,12 @@ const server = createServer(async (req, res) => {
   const started = Date.now();
   try {
     const existingSpec = body.existingSpec && typeof body.existingSpec === 'object' ? body.existingSpec : null;
-    const result = await buildGame({ prompt, groupTitle: String(body.groupTitle || '').slice(0, 180), existingSpec });
+    const result = await buildGame({ prompt, groupTitle: String(body.groupTitle || '').slice(0, 180), existingSpec, runtimeContract: String(body.runtimeContract?.version || 'command_dsl_v2').slice(0, 40) });
     return json(res, 200, { ...result, requestId: String(body.requestId || ''), model: config.model, durationMs: Date.now() - started });
   } catch (error) {
     totalFailures += 1;
     console.error(JSON.stringify({ level: 'error', message: String(error.message || error).slice(0, 600), durationMs: Date.now() - started }));
-    return json(res, 502, { error: String(error.message || 'AI pipeline failed').slice(0, 700), requestId: String(body.requestId || '') });
+    return json(res, 502, { error: String(error.message || 'AI pipeline failed').slice(0, 700), requestId: String(body.requestId || ''), agents: Array.isArray(error.agents) ? error.agents : [], stages: Array.isArray(error.stages) ? error.stages : [] });
   } finally {
     activeBuilds = Math.max(0, activeBuilds - 1);
   }
